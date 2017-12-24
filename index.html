@@ -1,0 +1,1009 @@
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8" name="viewport" content="width=device-width,initial-scale=1.0">
+		<title>fullcalendar-日程管理</title>
+		<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+		<link href="fullcalendar/fullcalendar.min.css" rel="stylesheet">
+		<link href="fullcalendar/fullcalendar.print.min.css" rel="stylesheet" media="print">
+		<link href="jquery-ui-1.10.4.custom/css/base/jquery-ui-1.10.4.custom.min.css" rel="stylesheet">
+		<link href="bootstrap-datepicker/dist/css/bootstrap-datepicker.min.css" rel="stylesheet">
+		<link href="fullcalendar/lib/cupertino/jquery-ui.min.css" rel="stylesheet">
+		<link href="artDialog/css/ui-dialog.css" rel="stylesheet">
+		<link href="wickedpicker/dist/wickedpicker.min.css" rel="stylesheet">
+		<script src="jquery-ui-1.10.4.custom/js/jquery-1.10.2.js"></script>
+		<script src="fullcalendar/lib/jquery.min.js"></script>
+		<script src="fullcalendar/lib/jquery-ui.min.js"></script>
+		<script src="fullcalendar/lib/moment.min.js"></script>
+		<script src="fullcalendar/fullcalendar.js"></script>
+		<script src="jquery-ui-1.10.4.custom/js/jquery-ui-1.10.4.custom.min.js"></script>
+		<script src="artDialog/dist/dialog-min.js"></script>
+		<script src="bootstrap/js/bootstrap.min.js"></script>
+		<script src="wickedpicker/dist/wickedpicker.min.js"></script>
+		<script src="bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+		<script src="bootstrap-datepicker/dist/locales/bootstrap-datepicker.zh-CN.min.js"></script>
+		<style>
+			body{
+				padding:0;
+				width: 100%;
+				height: 100%;
+				font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
+				font-size: 14px;
+				background:rgba(255,250,255,0.2)
+			}
+			h4{
+				margin: 0;
+			}
+			.fc-toolbar.fc-header-toolbar{
+				margin-bottom: 0;
+			}
+			.all{
+				/*padding-top:20px;*/
+				height: 100%;
+				width: 100%;
+				/*background:#ffddff;*/
+			}
+			#calendar{
+				width:900px;
+				margin:0 auto;
+			}
+			.taxt{
+				width:440px;
+			}
+			.time{
+				width:100px;
+			}
+			.sear{
+				width:85px;
+			}
+			.select{
+				width:150px;
+			}
+			.textarea{
+				width:300px;
+			}
+			.check{
+				padding:8px;
+			}
+			.slidertext{
+				padding-top:40px;
+			}
+			.timepicki{
+				position:relative;
+				z-index: 999;
+			}
+			#edit{
+				position:relative;
+				width:300px;
+			}
+			#edittitle{
+				padding-bottom:10px;
+				font-weight: bold;
+				font-size: 18px;
+			}
+			#edittype{
+				position:absolute;
+				top:5px;
+				right:5px;
+				width:80px;
+			}
+			.ui-dialog .ui-dialog-title{
+				width: 80%;
+			}
+			.ui-popup-backdrop{
+				opacity: 0 !important;
+			}
+			.modal-header{
+				background-color: #0E69B0;
+				color: #fff;
+			}
+			.fc-month-button{
+				background-color: #0E69B0;
+			}
+		</style>
+		<script>
+		$(function(){
+			$('.close-modal').click(function () {
+				window.parent.closeIframe();
+			});
+			// $(".checkbox").click(function(event){
+			//     event.stopPropagation();//阻止事件冒泡即可
+			// });
+			var  status = $('#calendarIframeStatus', window.parent.document).val();
+			if(status==1){
+				var boxStatus = 1;
+				var nowDay = '';
+				var boxNum ;
+                var isClick = 1;
+				var calendarCode = $($('#calendarTable', window.parent.document).find("tr.selected")[0]).attr("rel");
+				$.ajax({
+					type:"POST",
+					url:"/manage/calendar/getCalendar",
+					xhrFields: {
+						withCredentials: true
+					},
+					data:{calendarCode:calendarCode},
+					dataType:"json",
+					success:function(data){
+						var classData = data.data.event;
+						var workCenterCode = data.data.workCenterCode;
+						$('#exampleInputName1').val(data.data.calendarCode);
+						$('#exampleInputEmail2').val(data.data.calendarText);
+						$("#exampleInputName1").attr("disabled","disabled");
+						$("#exampleInputEmail2").attr("disabled","disabled");
+						var datas = {};
+						var myDate = new Date();
+						var nowMs = myDate.getTime()-86400000;//当前毫秒值
+						var year=myDate.getFullYear();    //获取完整的年份(4位,1970-????)
+						var months = myDate.getMonth()+1;
+						var getNowDay = myDate.getDate();
+						datas.month = year+'-'+months;
+						var events = [];
+						datas.calendarDays = [];
+						var shiftOrderCode = [];
+						for(var i=0;i<classData.length;i++) {
+							classData[i].allDay = 'true';
+						}
+						function dataFilter(arr) {
+							const temp = {}
+							arr.forEach((val) => {
+								temp[val.start] = temp[val.start] || []
+								temp[val.start].push(val.shiftOrderCode)
+							})
+							return temp
+						}
+						var tt=dataFilter(classData)
+						for(var k in tt){
+							datas.calendarDays.push({calendarDate:k,shiftCodes:tt[k]})
+						}
+						for(var i=0;i<datas.calendarDays.length-1;i++){
+							for(var j=i+1;j<datas.calendarDays.length;j++){
+								if(datas.calendarDays[i].calendarDate==datas.calendarDays[j].calendarDate){
+									datas.calendarDays.splice(j, 1);
+									j--;
+								}
+							}
+						}
+
+						$.ajax({
+							type:"GET",
+							url:"/manage/workCenter/workCenterSuggest",
+							dataType:"json",
+							xhrFields: {
+								withCredentials: true
+							},
+							success:function (data) {
+								var optHtml = '';
+								for(var i=0;i<data.length;i++){
+									optHtml +='<option value="'+data[i].workCenterCode+'" id="list' + i + '">'+data[i].workCenterText+'</option>'
+								}
+								$('#center').append(optHtml);
+								$("#center").val(workCenterCode);
+								$("#center").attr("disabled","disabled");
+							},
+							error:function (err) {
+
+							}
+						});
+						var html = '';
+						$.ajax({
+							type:"GET",
+							url:"/manage/shiftOrder/shiftOrders",
+							dataType:"json",
+							xhrFields: {
+								withCredentials: true
+							},
+							success: function(data) {
+								var events = [];
+								for(var i=0;i<data.length;i++){
+									endTime =data[i].endTime;
+									startTime = data[i].startTime;
+									html+=
+										'<div">'+
+										'<label>'+
+										'<input type="checkbox" name="personality" shiftCode="'+data[i].shiftOrderCode+'" id="'+data[i].shiftOrderCode+'" value="'+data[i].shiftOrderCode+'">'+
+										'<span class="earlyTime" style="vertical-align: sub;margin-left: 10px;">'+data[i].shiftOrderText+':'+data[i].startTime+'-'+data[i].endTime+'</span>'+
+										'</label>'+
+										'</div>'
+								}
+								$('.ui-dialog-content').append(html)
+							},
+							error:function(jqXHR){
+
+							}
+						});
+
+						$("#calendar").fullCalendar({
+							theme: true,
+							height:500,
+							fixedWeekCount:false,
+							customButtons:{
+								button1:{
+									text:"保存",
+									click:function(){
+									    var arr1 = [];
+									    for(let i=0;i<datas.calendarDays.length;i++){
+											if(typeof (datas.calendarDays[i].shiftCodes)=='string'){
+											   arr1.push(datas.calendarDays[i])
+                                                datas.calendarDays.splice(i,1)
+                                                i--;
+											}
+										}
+									    console.log(JSON.stringify(datas))
+
+                                        function dataFilter(arr) {
+                                            const temp = {}
+                                            arr.forEach((val) => {
+                                                temp[val.calendarDate] = temp[val.calendarDate] || []
+                                                temp[val.calendarDate].push(val.shiftCodes)
+                                            })
+                                            return temp
+                                        }
+                                        var tt=dataFilter(arr1)
+                                        for(var k in tt){
+                                            datas.calendarDays.push({calendarDate:k,shiftCodes:tt[k]})
+                                        }
+
+										datas.calendarCode = $('#exampleInputName1').val();
+										datas.calendarText = $('#exampleInputEmail2').val();
+										datas.workCenterCode = $('option:selected').val();
+
+										if(datas.calendarDays.length==0){
+											var d = dialog({
+												title:"提示信息",
+												content:'班次信息不能为空',
+												width:460,
+												cancelValue:"关闭",
+												cancel:function(){}
+											});
+											d.showModal();
+										}else{
+											$.ajax({
+												type:"POST",
+												url:"/manage/calendar/saveCalendar",
+												data:{datas:JSON.stringify(datas),id:calendarCode},
+												xhrFields: {
+													withCredentials: true
+												},
+												dataType:"json",
+												success:function(data){
+													var message= data.message;
+													if(data.statusCode!=200){
+														var d = dialog({
+															title:"提示信息",
+															content:message,
+															width:460,
+															cancelValue:"关闭",
+															cancel:function(){}
+														});
+														d.showModal();
+													}else{
+														window.parent.closeIframe();
+														$("#calendar").fullCalendar('destroy');
+													}
+
+												},
+												error:function(jqXHR){
+												}
+											});
+										}
+									}
+								},
+							},
+							header: {
+								left: 'prev,next today button3',
+								center: 'title',
+								right: 'button1 button2 '
+							},
+							firstDay: 1,
+							monthNames: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+							monthNamesShort: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+							dayNames:["星期日","星期一","星期二","星期三","星期四","星期五","星期六"],
+							dayNamesShort:["日","一","二","三","四","五","六"],
+							buttonText:{
+								today: "今天",
+							},
+							next:function(){},
+							allDayDefault:false,
+							slotLabelFormat:"H",
+							businessHours: {
+								dow:[1,2,3,4,5],
+								start:"8:00",
+								end:"17:00"
+							},
+							allDaySlot: true,
+							allDayText: "全天",
+							viewRender:function(view, element){
+								boxStatus = 1;
+							},
+							eventAfterAllRender:function(view ){
+								// var boxArr = [];
+								// $('.fc-day-top').each(function(i){
+								// 	var boxVal = $(this).attr('data-date');
+								// 	if(boxStatus==1){
+								// 		var html = '<input type="checkbox" name = "checkbox" class="checkbox" style="float: left;margin-left: 5px;" value="'+boxVal+'">';
+								// 		$(this).append(html);
+								// 	}
+								// });
+								// for(var i =0;i<classData.length;i++){
+								// 	var datais= classData[i].start;
+								// 	$('.checkbox').each(function(i){
+								// 		if(datais == $(this).val()){
+								// 			$(this).attr('checked','checked');
+								// 			$(this).addClass('oldData');
+								// 		}
+								// 	})
+								// }
+								// boxStatus++;
+							},
+							events:classData,
+							timeFormat: "HH:mm",//设置的是添加的具体的日程上显示的时间
+							views:{
+								month:{
+									titleFormat:"YYYY年M月"
+								},
+								week:{
+									titleFormat:"YYYY年M月D日",
+									columnFormat:"M.D dddd"
+								},
+								day:{
+									titleFormat:"YYYY年M月D日 dddd",
+									columnFormat:"M/D dddd"
+								}
+							},
+                            selectable: true,
+                            selectHelper: true,
+                            select: function(start, end) {
+							    var start   = $.fullCalendar.formatDate(start,"YYYY-MM-DD");
+							    var end   = $.fullCalendar.formatDate(end,"YYYY-MM-DD");
+                                var start1 = new Date(start.replace(/-/g,"/"));
+                                var end1 = new Date(end.replace(/-/g,"/"));
+                                var arrDate = [];
+                                var arrMs = [];
+                                do{
+                                    var month = start1.getMonth()+1;
+									month < 10 ? '0' + month : '' + month;
+									if(month < 10){
+                                        month='0' + month
+									}else{
+                                        month = month
+									}
+									var day = start1.getDate()
+									if(day<10){
+									    day = '0'+day;
+									}else{
+									    day = day
+									}
+									console.log(day)
+                                    arrDate.push(start1.getFullYear()+"-"+(month)+"-"+day);
+                                    start1.setDate(start1.getDate()+1);
+                                }while(end1 >start1);
+
+                                var d = dialog({
+                                    				title:"编辑排班",
+                                    				content:html,
+                                    				width:460,
+                                    				okValue:"确定",
+                                    				ok:function(){
+                                                        var newEvent = [];
+														var shiftCodes = [];
+														$('input[shiftcode]:checked').each(function (i) {
+															// shiftCodes.push($(this).val());
+															for(let i = 0;i<arrDate.length;i++){
+                                                                newEvent.push({title:$(this).next().text(),start:arrDate[i],allDay:true,className:$(this).val()});
+                                                                datas.calendarDays.push({calendarDate:arrDate[i],shiftCodes:$(this).val()});
+															}
+														});
+
+                                                        $('#calendar').fullCalendar('renderEvents', newEvent,'stick');
+                                    				},
+                                    				cancelValue:"取消",
+                                    				cancel:function(){
+                                    				}
+                                    			});
+                                var e = dialog({
+                                    				title:"编辑排班",
+                                    				content:'所选时间不能晚于当前时间',
+                                    				width:460,
+                                    				okValue:"确定",
+                                    				ok:function(){
+
+                                    				},
+                                    				cancelValue:"取消",
+                                    				cancel:function(){
+                                    				}
+                                    			});
+                                if(arrDate.length>0){
+                                    for(let i=0;i<arrDate.length;i++){
+                                        var ms = new Date(arrDate[i]).getTime();
+											arrMs.push(ms)
+									}
+								}
+                                if(arrDate.length>0){
+                                    for( let j=0;j<arrMs.length;j++){
+                                        if(arrMs[j]>nowMs){
+                                            d.showModal();
+										}else{
+                                            e.showModal();
+										}
+									}
+								}
+
+                          		  },
+                            eventClick:function(event,jsEvent,view){
+                                var editstarttime = $.fullCalendar.formatDate(event.start,"YYYY-MM-DD");
+                                $("#edittitle").html(event.title);
+                                var eventtitle = event.title;
+                                if(event.end){
+                                    var editendtime = $.fullCalendar.formatDate(event.end,"YYYY-MM-DD");
+                                    $("#edittime").html(editstarttime+"  至  "+editendtime);
+                                }else{
+                                    $("#edittime").html(editstarttime);
+                                };
+                                var EventId = event._id;
+                                dialog({
+                                    title:"编辑日程",
+                                    content:$("#edit"),
+                                    button:[{
+                                        value:"删除",
+                                        callback:function(){
+                                            $("#calendar").fullCalendar("removeEvents",EventId);
+                                            var serial;
+                                            var daysEvent = datas.calendarDays;
+                                            for(var i=0;i<daysEvent.length;i++){
+                                                if(daysEvent[i].calendarDate==editstarttime){
+                                                    var codes = daysEvent[i].shiftCodes;
+                            					for(var j=0;j<codes.length;j++){
+                            					    if(codes[j]==event.shiftOrderCode){
+                                                            daysEvent[i].shiftCodes.splice(j,1)
+                            						}
+                            					}
+                            				}
+                                            }
+                                        }
+                                    }],
+                                    cancelValue:"取消",
+                                    cancel:function(){}
+                                }).showModal();
+                            }
+
+						});
+
+					},
+					error:function(jqXHR){
+					}
+				});
+
+			}else
+				{
+	//	        <-------------------------------fengexian--------------------->
+				var datas = {};
+				var events = [];
+				var nowDay = '';
+				var boxStatus = 1;
+				var myDate = new Date();
+				var nowMs = myDate.getTime()-86400000;//当前毫秒值
+				datas.calendarDays = [];
+				$.ajax({
+					type:"GET",
+					url:"/manage/workCenter/workCenterSuggest",
+					dataType:"json",
+					xhrFields: {
+						withCredentials: true
+					},
+					success:function (data) {
+						var optHtml = '';
+						for(var i=0;i<data.length;i++){
+							optHtml +='<option value="'+data[i].workCenterCode+'" id="list' + i + '">'+data[i].workCenterText+'</option>'
+						}
+						$('#center').append(optHtml);
+					},
+					error:function (err) {
+
+					}
+				});
+				var html = '';
+				$.ajax({
+					type:"GET",
+					url:"/manage/shiftOrder/shiftOrders",
+					dataType:"json",
+					xhrFields: {
+						withCredentials: true
+					},
+					success: function(data) {
+						var events = [];
+						for(var i=0;i<data.length;i++){
+							endTime =data[i].endTime;
+							startTime = data[i].startTime;
+							html+=
+								'<div>'+
+								'<label>'+
+								'<input type="checkbox" name="personality" shiftCode="'+data[i].shiftOrderCode+'" id="'+data[i].shiftOrderCode+'" value="'+data[i].shiftOrderCode+'">'+
+								'<span class="earlyTime" style="vertical-align: sub;margin-left: 10px;">'+data[i].shiftOrderText+':'+data[i].startTime+'-'+data[i].endTime+'</span>'+
+								'</label>'+
+								'</div>'
+						}
+						$('.ui-dialog-content').append(html)
+					},
+					error:function(jqXHR){
+
+					}
+				});
+				var checkNm  ;
+
+				$("#calendar").fullCalendar({
+					theme: true,
+					height: 500,
+					fixedWeekCount:false,
+					customButtons:{
+						button1:{
+							text:"保存",
+							click:function(){
+								var days = datas.calendarDays;
+								//判断被选中的内容
+                                var arr1 = [];
+                                for(let i=0;i<datas.calendarDays.length;i++){
+                                    if(typeof (datas.calendarDays[i].shiftCodes)=='string'){
+                                        arr1.push(datas.calendarDays[i])
+                                        datas.calendarDays.splice(i,1)
+                                        i--;
+                                    }
+                                }
+
+                                function dataFilter(arr) {
+                                    const temp = {}
+                                    arr.forEach((val) => {
+                                        temp[val.calendarDate] = temp[val.calendarDate] || []
+                                        temp[val.calendarDate].push(val.shiftCodes)
+                                    })
+                                    return temp
+                                }
+                                var tt=dataFilter(arr1)
+                                for(var k in tt){
+                                    datas.calendarDays.push({calendarDate:k,shiftCodes:tt[k]})
+                                }
+								datas.calendarCode = $('#exampleInputName1').val();
+								datas.calendarText = $('#exampleInputEmail2').val();
+								datas.workCenterCode = $('option:selected').val();
+
+								for(var i=0;i<datas.calendarDays.length-1;i++){
+									for(var j=i+1;j<datas.calendarDays.length;j++){
+										if(datas.calendarDays[i].calendarDate==datas.calendarDays[j].calendarDate){
+											datas.calendarDays.splice(i, 1);
+											j--;
+											continue;
+										}
+									}
+								}
+								if(datas.calendarCode==''){
+									var d = dialog({
+										title:"提示信息",
+										content:'日历编号不能为空',
+										width:460,
+										cancelValue:"关闭",
+										cancel:function(){}
+									});
+									d.showModal();
+								}else if(datas.calendarDays.length==0){
+									var d = dialog({
+										title:"提示信息",
+										content:'班次信息不能为空',
+										width:460,
+										cancelValue:"关闭",
+										cancel:function(){}
+									});
+									d.showModal();
+								}else if(datas.calendarText==''){
+									var d = dialog({
+										title:"提示信息",
+										content:'日历描述不能为空',
+										width:460,
+										cancelValue:"关闭",
+										cancel:function(){}
+									});
+									d.showModal();
+								}else{
+									var calendarData = JSON.stringify({'datas':datas});
+									$.ajax({
+										type:"POST",
+										url:"/manage/calendar/saveCalendar",
+										data:{datas:JSON.stringify(datas)},
+										xhrFields: {
+											withCredentials: true
+										},
+										dataType:"json",
+										success:function(data){
+											var message= data.message;
+											if(data.statusCode!=200){
+												var d = dialog({
+													title:"提示信息",
+													content:message,
+													width:460,
+													cancelValue:"关闭",
+													cancel:function(){}
+												});
+												d.showModal();
+											}else{
+												window.parent.closeIframe();
+												$("#calendar").fullCalendar('destroy');
+											}
+
+										},
+										error:function(jqXHR){
+										}
+									});
+								}
+							}
+						},
+					},
+					header: {
+						left: 'prev,next today button3',
+						center: 'title',
+						right: 'button1 button2 '
+					},
+					firstDay: 1,
+					monthNames: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+					monthNamesShort: ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"],
+					dayNames:["星期日","星期一","星期二","星期三","星期四","星期五","星期六"],
+					dayNamesShort:["日","一","二","三","四","五","六"],
+					buttonText:{
+						today: "今天",
+						month: "月",
+					},
+					allDayDefault:false,
+					slotLabelFormat:"H",
+					businessHours: {
+						dow:[1,2,3,4,5],
+						start:"8:00",
+						end:"17:00"
+					},
+					allDaySlot: true,
+					allDayText: "全天",
+					timeFormat: "HH:mm",//设置的是添加的具体的日程上显示的时间
+					eventAfterAllRender:function(view ){
+						// var boxArr = [];
+						// $('.fc-day-top').each(function(i){
+						// 	var boxVal = $(this).attr('data-date');
+						// 	if(boxStatus==1){
+						// 		var html = '<input type="checkbox" name = "checkbox" class="checkbox" style="float: left;margin-left: 5px;" value="'+boxVal+'">';
+						// 		$(this).append(html);
+						// 		// $(".checkbox").click(function(event){
+						// 		//     console.log(1)
+						// 		//     return false;
+						// 		// });
+						// 	}
+						// });
+						// boxStatus++;
+					},
+					views:{
+						month:{
+							titleFormat:"YYYY年M月"
+						},
+						week:{
+							titleFormat:"YYYY年M月D日",
+							columnFormat:"M.D dddd"
+						},
+						day:{
+							titleFormat:"YYYY年M月D日 dddd",
+							columnFormat:"M/D dddd"
+						}
+					},
+                    selectable: true,
+                    selectHelper: true,
+                    select: function(start, end) {
+                        var start   = $.fullCalendar.formatDate(start,"YYYY-MM-DD");
+                        var end   = $.fullCalendar.formatDate(end,"YYYY-MM-DD");
+                        var start1 = new Date(start.replace(/-/g,"/"));
+                        var end1 = new Date(end.replace(/-/g,"/"));
+                        var arrDate = [];
+                        var arrMs = [];
+                        do{
+                            var month = start1.getMonth()+1;
+                            month < 10 ? '0' + month : '' + month;
+                            if(month < 10){
+                                month='0' + month
+                            }else{
+                                month = month
+                            }
+                            var day = start1.getDate()
+                            if(day<10){
+                                day = '0'+day;
+                            }else{
+                                day = day
+                            }
+                            console.log(day)
+                            arrDate.push(start1.getFullYear()+"-"+(month)+"-"+day);
+                            start1.setDate(start1.getDate()+1);
+                        }while(end1 >start1);
+                        var d = dialog({
+                            title:"编辑排班",
+                            content:html,
+                            width:460,
+                            okValue:"确定",
+                            ok:function(){
+                                var newEvent = [];
+                                var shiftCodes = [];
+                                $('input[shiftcode]:checked').each(function (i) {
+                                    // shiftCodes.push($(this).val());
+                                    for(let i = 0;i<arrDate.length;i++){
+                                        newEvent.push({title:$(this).next().text(),start:arrDate[i],allDay:true,className:$(this).val()});
+                                        datas.calendarDays.push({calendarDate:arrDate[i],shiftCodes:$(this).val()});
+                                    }
+                                });
+
+                                $('#calendar').fullCalendar('renderEvents', newEvent,'stick');
+                            },
+                            cancelValue:"取消",
+                            cancel:function(){
+                            }
+                        });
+                        var e = dialog({
+                            title:"编辑排班",
+                            content:'所选时间不能晚于当前时间',
+                            width:460,
+                            okValue:"确定",
+                            ok:function(){
+
+                            },
+                            cancelValue:"取消",
+                            cancel:function(){
+                            }
+                        });
+                        if(arrDate.length>0){
+                            for(let i=0;i<arrDate.length;i++){
+                                var ms = new Date(arrDate[i]).getTime();
+                                arrMs.push(ms)
+                            }
+                        }
+                        if(arrDate.length>0){
+                            for( let j=0;j<arrMs.length;j++){
+                                if(arrMs[j]>nowMs){
+                                    d.showModal();
+                                }else{
+                                    e.showModal();
+                                }
+                            }
+                        }
+
+                    },
+					eventClick:function(event,jsEvent,view){
+					    var editstarttime = $.fullCalendar.formatDate(event.start,"YYYY-MM-DD");
+					    $("#edittitle").html(event.title);
+					    var eventtitle = event.title;
+					    if(event.end){
+					        var editendtime = $.fullCalendar.formatDate(event.end,"YYYY-MM-DD");
+					        $("#edittime").html(editstarttime+"  至  "+editendtime);
+					    }else{
+					        $("#edittime").html(editstarttime);
+					    };
+					    var EventId = event._id;
+					    dialog({
+					        title:"编辑日程",
+					        content:$("#edit"),
+					        button:[{
+					            value:"删除",
+					            callback:function(){
+					                $("#calendar").fullCalendar("removeEvents",EventId);
+									for(var i=0 ;i<datas.calendarDays.length;i++){
+					                    if(datas.calendarDays[i].calendarDate==editstarttime&&datas.calendarDays[i].shiftCodes==event.className){
+                                            datas.calendarDays.splice(i, 1);
+					                        console.log(datas)
+										}
+									}
+
+					            }
+					        }],
+					        cancelValue:"取消",
+					        cancel:function(){}
+					    }).showModal();
+					}
+				});
+			}
+		});
+
+		</script>
+	</head>
+	<body>
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" style="width: 1000px;margin-left: -500px;display: block;top:5%;opacity: 1;z-index: 10;">
+			<div class="modal-dialog" role="document">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close close-modal" data-dismiss="modal" aria-label="Close" style="opacity: 1"><span aria-hidden="true" style="font-size: 20px;color: #fff;">&times;</span></button>
+						<h4 class="modal-title" id="myModalLabel">班次排班</h4>
+					</div>
+					<div class="modal-body" style="min-height: 580px;padding: 0;">
+						<div class="all">
+							<div class="outer" style="width: 930px;margin: 0 auto;background-color: #fff;margin-bottom: 30px;">
+								<div class="workcenter" style="height: 50px;line-height: 50px;">
+									<form class="form-inline" style="display: flex;">
+										<div class="form-group" style="flex: 1;">
+											<label for="exampleInputName1" style="margin-left: 15px;">日历编号：</label>
+											<input type="text" class="form-control" id="exampleInputName1">
+										</div>
+										<div class="form-group" style="flex: 1" >
+											<label for="exampleInputEmail2" style="margin-left: 15px;">日历描述：</label>
+											<input type="text" class="form-control" id="exampleInputEmail2">
+										</div>
+										<div class="form-select" style="">
+											<span style="font-weight: 700;margin-left: 15px;" >工作中心：</span>
+											<select name="center" id="center" style="height: 34px;width: 190px;border-radius: 4px;">
+											</select>
+										</div>
+									</form>
+								</div>
+								<div id="calendar" >
+								</div>
+							</div>
+
+						</div>
+					</div>
+					<!--<div class="modal-footer">-->
+						<!--<button type="button" class="btn btn-default close-modal" data-dismiss="modal">关闭</button>-->
+						<!--&lt;!&ndash;<button type="button" class="btn btn-primary">Save changes</button>&ndash;&gt;-->
+					<!--</div>-->
+				</div>
+			</div>
+		</div>
+		<div class="dio-bgc" style="position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 1;
+		opacity: .5;
+		background-color: #000"></div>
+		<div id="set" style="display:none" class="taxt">
+			<div id="slider"></div>
+			<div style="text-align: center" class="slidertext">
+				<input type="text" id="amount" style="border:0; color:#f6931f; font-weight:bold; text-align: center; font-size: 16px;">
+			</div>
+		</div>
+		<div id="edit" style="display: none">
+			<p id="edittitle"></p>
+
+			<p id="edittime"></p>
+		</div>
+		<div id="dialog-form" style="display:none">
+			<form class="form-inline">
+				<p>
+					<label>事务标题：</label>
+					<input type="text" class="form-control">
+				</p>
+				<p>
+					<label>事务内容：</label>
+					<textarea class="textarea" rows="4" placeholder="内容" id="titledetail"></textarea>
+					<span>（必填）</span>
+				</p>
+				<p>
+					<label>事务类型：</label>
+					<select class="select">
+						<option>工作事务</option>
+						<option>个人事务</option>
+					</select>
+				</p>
+				<p>
+					<label>开始时间：</label>
+					<input type="text" class="time datepicker" id="startdate">
+					<input type="text" class="time timepicki" id="starttime">
+				</p>
+				<p style="display:none" id="enddate">
+					<label>结束时间：</label>
+					<input type="text" class="time datepicker" id="stopdate">
+					<input type="text" class="time timepicki" id="endtime">
+				</p>
+				<p class="checkbox check">
+					<label class="checkbox-inline"><input type="checkbox" id="isallday">全天</label>
+					<label class="checkbox-inline"><input type="checkbox" id="end">结束时间</label>
+					<label class="checkbox-inline"><input type="checkbox" id="repeat">重复</label>
+				</p>
+				<p id="repeattype" style="display: none">
+					<label>重复类型：</label>
+					<select class="select" id="repeatselect">
+						<option value="1">按天重复</option>
+						<option value="2">按周重复</option>
+						<option value="3">按月重复</option>
+						<option value="4">按年重复</option>
+						<option value="5">按工作日重复</option>
+					</select>
+				</p>
+				<p id="repeattime" style="display: none">
+					<label>重复时间：</label>
+					<select class="time" id="repeatmonth" style="display:none">
+						<option value="">1月</option>
+						<option value="">2月</option>
+						<option value="">3月</option>
+						<option value="">4月</option>
+						<option value="">5月</option>
+						<option value="">6月</option>
+						<option value="">7月</option>
+						<option value="">8月</option>
+						<option value="">9月</option>
+						<option value="">10月</option>
+						<option value="">11月</option>
+						<option value="">12月</option>
+					</select>
+					<select class="time" id="repeatday" style="display:none">
+						<option value="">1日</option>
+						<option value="">2日</option>
+						<option value="">3日</option>
+						<option value="">4日</option>
+						<option value="">5日</option>
+						<option value="">6日</option>
+						<option value="">7日</option>
+						<option value="">8日</option>
+						<option value="">9日</option>
+						<option value="">10日</option>
+						<option value="">11日</option>
+						<option value="">12日</option>
+						<option value="">13日</option>
+						<option value="">14日</option>
+						<option value="">15日</option>
+						<option value="">16日</option>
+						<option value="">17日</option>
+						<option value="">18日</option>
+						<option value="">19日</option>
+						<option value="">20日</option>
+						<option value="">21日</option>
+						<option value="">22日</option>
+						<option value="">23日</option>
+						<option value="">24日</option>
+						<option value="">25日</option>
+						<option value="">26日</option>
+						<option value="">27日</option>
+						<option value="">28日</option>
+						<option value="">29日</option>
+						<option value="">30日</option>
+						<option value="">31日</option>
+					</select>
+					<select class="time" id="repeatweek" style="display:none">
+						<option value="">星期一</option>
+						<option value="">星期二</option>
+						<option value="">星期三</option>
+						<option value="">星期四</option>
+						<option value="">星期五</option>
+						<option value="">星期六</option>
+						<option value="">星期日</option>
+					</select>
+					<input type="text" class="time timepicki" id="repeatclock">
+				</p>
+				<p>
+					<label>&nbsp;&nbsp;&nbsp;参与者：</label>
+					<textarea rows="3"></textarea>
+				</p>
+				<p></p>
+			</form>
+		</div>
+
+		<div id="search" style="display:none">
+			<form class="form-inline">
+				<p>
+					<label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;日期：</label>
+					<input type="text" class="sear datepicker">
+					<span>至</span>
+					<input type="text" class="sear datepicker">
+				</p>
+				<p>
+					<label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;状态：</label>
+					<select>
+						<option value="">未进行</option>
+						<option value="">进行中</option>
+						<option value="">已完成</option>
+						<option value="">已超时</option>
+					</select>
+				</p>
+				<p>
+					<label>事务类型：</label>
+					<select>
+						<option value="">工作事务</option>
+						<option value="">个人事务</option>
+					</select>
+				</p>
+				<p>
+					<label>事务内容：</label>
+					<input type="text">
+				</p>
+			</form>
+		</div>
+	</body>
+	</html>
+
