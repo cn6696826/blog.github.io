@@ -6,6 +6,7 @@ var favicon = require('serve-favicon');
 //记录日志
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
+//消息体解析 这个中间件不会解析multipart body 
 var bodyParser = require('body-parser');
 
 var index = require('./routes/index');
@@ -14,16 +15,17 @@ var users = require('./routes/users');
 var app = express();
 
 // view engine setup
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, 'views')); //相对路径
+//使用jade引擎模板
 app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
 //网页logo的使用方法
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 
-//打印请求信息到指定目录
-var acessLog = fs.createWriteStream(path, { flogs: 'a' }) //打印成功请求信息
-var errorLog = fs.createWriteStream(path, { flogs: 'a' })
+//打印请求信息到指定目录  前提是有这样的目录下的文件
+// var acessLog = fs.createWriteStream(path, { flogs: 'a' }) //打印成功请求信息
+// var errorLog = fs.createWriteStream(path, { flogs: 'a' })
 app.use(logger('dev')); //打印到控制台
 app.use(bodyParser.json());
 
