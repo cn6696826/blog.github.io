@@ -9,6 +9,7 @@ var cookieParser = require('cookie-parser');
 //消息体解析 这个中间件不会解析multipart body 
 var bodyParser = require('body-parser');
 
+//引入路由文件
 var index = require('./routes/index');
 var users = require('./routes/users');
 
@@ -32,8 +33,10 @@ app.use(bodyParser.json());
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+// 静态资源访问 如果静态资源存放在多个目录下 可以多次调用中间件
 app.use(express.static(path.join(__dirname, 'public')));
 
+//使用引入的两个路由文件
 app.use('/', index);
 app.use('/users', users);
 
@@ -44,7 +47,7 @@ app.use(function(req, res, next) {
     next(err);
 });
 
-// error handler
+// error handler定义错误处理器
 app.use(function(err, req, res, next) {
     // set locals, only providing error in development
     res.locals.message = err.message;
@@ -55,4 +58,37 @@ app.use(function(err, req, res, next) {
     res.render('error');
 });
 
+// 路由设定 不在这里在route下
+// app.get('/', function(res, req) {
+//     res.send('hellowsss')
+// })
+// app.get('/a', function(res, req) {
+//     res.send('koko')
+// })
+// / 各种路由匹配规则
+//匹配 acd abcd  b是选项可有可不有 ?表示选择可有可不用
+// app.get('/ab?cd', function() {
+//         res.render('index', { title: 'Express' });
+//     })
+//匹配abcd abbcd abbbcd b是可选项 前后都可使用
+// app.get('/ab+cd', function() {
+//不能使用send命令************
+//        
+//     })
+//     //ab和cd之间可以夹杂其他任意内容 ab11233cd
+// app.get('/ab*cd', function() {
+//         
+//     })
+//     //正则表达式的匹配
+// app.get(/abdd/, function() {
+//    
+// })
+var server = app.listen(3000, function() {
+    //node api ==server.address 找到指定的端口 返回三个值 port （端口） address(地址) family (IPV4协议)
+    //只有在listen事件的时候才会触发    
+    var host = server.address().address;
+    var port = server.address().port;
+
+
+})
 module.exports = app;
